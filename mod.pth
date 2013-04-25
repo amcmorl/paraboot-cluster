@@ -1,0 +1,6 @@
+import sys; sys.__plen = len(sys.path)
+/data/code
+/data/code
+/code/data/h5py-2.1.2-py2.7-linux-x86_64.egg
+/code/data/scikit_learn-0.13.1-py2.7-linux-x86_64.egg
+import sys; new=sys.path[sys.__plen:]; del sys.path[sys.__plen:]; p=getattr(sys,'__egginsert',0); sys.path[p:p]=new; sys.__egginsert = p+len(new)
