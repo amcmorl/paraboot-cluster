@@ -8,6 +8,7 @@ calculations.
 # from simulate_cells
 #------------------------------------------------------------------------------
 
+import os
 import numpy as np
 from motorlab.kinematics import get_dir, get_speed
 
@@ -74,8 +75,14 @@ class KDPSCell(TunedCell):
 # -----------------------------------------------------------------------------
 ds_frank = 'frank-osmd'
 ds_tupac = 'tupac-uid'
-intermediate_dir = '/home/amcmorl/data/directionality'
+
+intermediate_dir = '/data'
 unit_file = intermediate_dir + '/unit_names_list.txt'
+
+code_dir = os.path.split(os.path.realpath(__file__))[0]
+log_dir  = code_dir + '/log'
+job_dir  = code_dir + '/job'   
+
 par_std = ParameterSet()
 par_std.unit_gam_file_pat = intermediate_dir + '/unit_gam_results' + \
     '/gam_%s_%s.npz' # % (dsname, unit_name.lower())

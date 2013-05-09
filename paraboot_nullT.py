@@ -17,7 +17,7 @@ Poisson variates from the fit of the real data with null (constant) model.
 
 import os, sys, logging
 
-paper_dir = os.environ['DBOX'] + '/papers/directionality_paper'
+paper_dir = '/data'
 proj_dir = paper_dir + '/code'
 if not proj_dir in sys.path:
     sys.path.append(proj_dir)
@@ -155,10 +155,12 @@ def write_delta_tauK_distrib_one_cell(dsname, unit_name, batch, nrep=10):
     cell : string
       string code for cell to run
     '''
+    logging.info('running batch %d' % batch)
     cell    = dsname, unit_name
     real    = _load_real_dataset(*cell)
     gam_fit = _load_gam_fit(*cell)
     Bnull   = _get_Bnull(gam_fit)
+    
     _write_tauK_null_distribution(dsname, real, batch, Bnull, nrep=nrep)
 
 if __name__ == "__main__":
