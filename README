@@ -1,0 +1,13 @@
+Paraboot cluster files
+----------------------
+Files required for the initialization, configuration and running of parametric bootstrapping for the tuning directionality project.
+
+Contributors
+------------
+Angus McMorland
+Steven Suway
+Meel Velliste
+
+Update log
+----------
+2013-05-21 - Angus McMorland - initialization
