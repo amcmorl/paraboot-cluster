@@ -15,7 +15,7 @@ where Y for the test statistic distribution calculation is derived as random
 Poisson variates from the fit of the real data with null (constant) model.
 '''
 
-import os, sys, logging
+import os, sys, logging, time
 
 paper_dir = '/data'
 proj_dir = paper_dir + '/code'
@@ -27,6 +27,7 @@ if not fig_sim_dir in sys.path:
 from paraboot_support import KDPSCell
 
 import numpy as np
+from scipy import stats
 from motorlab.tuning.gam_plus import GAMFitManyModels
 import motorlab.tuning.gam_plus as gam
 
@@ -73,7 +74,7 @@ def _get_gam_fit(data, models=[null_model, other_model]):
 def _get_delta_tauK(dataset):
     gam_fit    = _get_gam_fit(dataset)
     tauK, P = gam.calc_kendall_tau(gam_fit)
-    return tauK[null_model], tauK[other_model], tauK[null_model] - tauK[other_model]
+    return tauK[null_model], tauK[other_model], tauK[null_model] - tauK[other_model], P[null_model], P[other_model], gam_fit
 
 def _get_save_file(dsname, unit_name, batch):
     base = tp.intermediate_dir
@@ -89,8 +90,8 @@ def _write_tauK_null_distribution(dsname, real, batch, Bnull, nrep=1):
     Write to file `nrep` times parametric bootstrapped :math:\Delta \tau_K
     values
     '''
-    assert len(real.unit_names) == 1
-    unit_name = real.unit_names[0]
+   # assert len(real.unit_names) == 1
+    unit_name = real.unit_names
 
     #f = _get_save_file(dsname, unit_name, batch)
     #print "Going to write %s" % f.name
@@ -100,11 +101,16 @@ def _write_tauK_null_distribution(dsname, real, batch, Bnull, nrep=1):
             pb_dataset_j = _get_paraboot_dataset(real, Bnull)
             logging.debug(np.nansum(pb_dataset_j.count))
             pb_dataset_j.dsname = dsname # not a standard part of binned_data
-            static_tauj, dynamic_tauj, diff_tauj = \
+            static_tauj, dynamic_tauj, diff_tauj, P_static, P_vary, gam_complete = \
                 _get_delta_tauK(pb_dataset_j)
-            f.write('iter %d: static %0.8f vary %0.8f diff %0.8f\n' % \
-                (j, static_tauj, dynamic_tauj, diff_tauj))
+            f.write('iter %d: static %0.8f vary %0.8f diff %0.8f P_static %0.8f P_vary %0.8f\n' % \
+                (j, static_tauj, dynamic_tauj, diff_tauj, P_static, P_vary))
+            #f.write(str(time.time()) + '\n')
             f.flush()
+            if j == 0 and batch == 0:
+                hdf5_filename = tp.intermediate_dir + '/dtk_%s' % unit_name.lower() + '/dtk_%s_%s_%03d.hdf5' % \
+                    (dsname, unit_name.lower(), batch)
+                gam_complete.save(hdf5_filename)
     f.close()
 
 def _load_real_dataset(dsname, unit_name):
@@ -120,6 +126,7 @@ def _load_real_dataset(dsname, unit_name):
     bnd_dir = tp.intermediate_dir + '/bnd_%s_files' % (dsname)
     bnd_name = bnd_dir + '/bnd_%s_%s_100ms.npz' % (dsname, unit_name)
     real_dataset = load_binned_data(bnd_name)
+    real_dataset.unit_names = unit_name
     return real_dataset
 
 def _load_gam_fit(dsname, unit_name):
@@ -144,6 +151,33 @@ def _get_Bnull(gam_fit):
         Bnull[k] = np.mean(v, axis=-1)
     return Bnull
 
+def calc_real_tau(gam_unit, dsname, unit_name):
+    base = tp.intermediate_dir
+    unit_dir = base + '/dtk_%s' % unit_name.lower()
+    if not os.path.isdir(unit_dir):
+        os.mkdir(unit_dir)
+    file_name = unit_dir + '/real_tau_%s_%s.txt' % \
+            (dsname, unit_name.lower())
+
+    tau = {}
+    P   = {}
+
+    act_flat = gam_unit.actual.flatten()
+    nans = np.isnan(act_flat)
+    act_flat = act_flat[~nans]    
+
+    pred_flat = gam_unit.fits['kdps'].pred.flatten()[~nans]
+    tau['kdps'], P['kdps'] = stats.kendalltau(act_flat, pred_flat)
+
+    pred_flat = gam_unit.fits['kdpsX'].pred.flatten()[~nans]
+    tau['kdpsX'], P['kdpsX'] = stats.kendalltau(act_flat, pred_flat)
+    
+    f = open(file_name, 'a')
+    f.write('kdps: tau = %0.8f P = %0.8f\n' % (tau['kdps'], P['kdps']))
+    f.write('kdpsX: tau = %0.8f P = %0.8f\n' % (tau['kdpsX'], P['kdpsX']))
+    f.flush()
+    f.close()
+
 def write_delta_tauK_distrib_one_cell(dsname, unit_name, batch, nrep=10):
     '''
     Calculate, using parametric bootstrapping, the P value that the test
@@ -159,6 +193,8 @@ def write_delta_tauK_distrib_one_cell(dsname, unit_name, batch, nrep=10):
     cell    = dsname, unit_name
     real    = _load_real_dataset(*cell)
     gam_fit = _load_gam_fit(*cell)
+    if batch == 0:
+        calc_real_tau(gam_fit, dsname, unit_name)
     Bnull   = _get_Bnull(gam_fit)
     
     _write_tauK_null_distribution(dsname, real, batch, Bnull, nrep=nrep)

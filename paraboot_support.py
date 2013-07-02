@@ -68,7 +68,7 @@ class KDPSCell(TunedCell):
         rate += np.dot(pos[...,:-1,:], self.B['P'])   # position
         speed = get_speed(pos, time, tax=2, spax=-1)
         rate += self.B['s'] * speed
-        return rate
+        return np.exp(rate)
 
 # -----------------------------------------------------------------------------
 # from tuning_project
@@ -87,6 +87,6 @@ par_std = ParameterSet()
 par_std.unit_gam_file_pat = intermediate_dir + '/unit_gam_results' + \
     '/gam_%s_%s.npz' # % (dsname, unit_name.lower())
 parameters = { 'std' : par_std }
-nrep = 20 # int(1e3)
+nrep = 1000 # int(1e3)
 nrep_per_batch = 10
 nbat = nrep / nrep_per_batch
